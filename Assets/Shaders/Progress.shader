@@ -65,20 +65,22 @@ Shader "Unlit/Progress"
                 fixed4 col = tex2D(_MainTex, i.uv);
                 //计算前景色和背景色的透明度和
                 fixed4 final = fixed4(0, 0, 0, 0);
-                final.a = step(1 - col.a, 0.5) == 1 ? _ForegroundColor.a + _BackgroundColor.a : 0;
                 
                 //计算原点到坐标点相对于x轴的角度
                 float angle = atan2(i.pos.z, i.pos.x) * (180 / 3.14159);
                 //计算顺时针和逆时针角度
                 angle = _Forward == 1 ? (angle < 0 ? angle + 360 : angle) : abs(angle > 0 ? angle - 360 : angle);
                 
-                const float curAngle = _Progress * 360;
                 //根据当前坐标角度和目标角度的大小关系渲染进度条
-                final.rgb = curAngle >= angle ? _ForegroundColor.xyz * _ForegroundColor.a + _BackgroundColor.a * _BackgroundColor.xyz *
+                const float curAngle = _Progress * 360;
+                final.rgb = curAngle >= angle ? _ForegroundColor.xyz * _ForegroundColor.a + _BackgroundColor.xyz *
                     (1 - _ForegroundColor.a) :  _BackgroundColor.xyz;
-                //重新单独计算进度条未覆盖部分的透明度
-                final.a = curAngle >= angle ? final.a : final.a * _BackgroundColor.a;
 
+                //计算透明度和混色
+                const float quadFinalAlpha = _ForegroundColor.a > _BackgroundColor.a ? _ForegroundColor.a : _BackgroundColor.a;
+                const float semiFinalAlpha = curAngle >= angle ? quadFinalAlpha: _BackgroundColor.a;
+                final.a = step(1 - col.a, 0.5) == 1 ? semiFinalAlpha : 0;
+                
                 return final;
             }
             ENDCG

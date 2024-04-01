@@ -6,8 +6,6 @@ Shader "Custom/Outline"
 		_Specular ("Specular", Color) = (1, 1, 1, 1)
 		_Gloss ("Gloss", Range(8.0, 256)) = 20
         _MainTex ("Albedo (RGB)", 2D) = "white" {}
-//        _Glossiness ("Smoothness", Range(0,1)) = 0.5
-//        _Metallic ("Metallic", Range(0,1)) = 0.0
         _OutlineWidth ("OutlineWidth", Range(0,1)) = 0.1
         _OutlineColor ("OutlineColor", Color) = (0,0,0,1)
     }
@@ -63,6 +61,7 @@ Shader "Custom/Outline"
             {
                 //texture采样
                 fixed4 color = tex2D(_MainTex,i.uv);
+                //光影计算
                 fixed3 worldNormal = normalize(i.worldNormal);
 				fixed3 worldLightDir = normalize(_WorldSpaceLightPos0.xyz);
 				
@@ -103,7 +102,7 @@ Shader "Custom/Outline"
             v2f vert(appdata_tan v)
             {
                 v2f o;
-                //把顶点转换到世界空间
+                //把顶点转换到裁剪空间
                 float4 pos = UnityObjectToClipPos(v.vertex);
                 //把法线转换到ndc空间
                 float3 ndcNormal = normalize(mul((float3x3)unity_MatrixMVP, v.tangent.xyz)) * pos.w;
