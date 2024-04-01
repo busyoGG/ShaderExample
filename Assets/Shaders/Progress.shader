@@ -69,7 +69,7 @@ Shader "Unlit/Progress"
                 //计算原点到坐标点相对于x轴的角度
                 float angle = atan2(i.pos.z, i.pos.x) * (180 / 3.14159);
                 //计算顺时针和逆时针角度
-                angle = _Forward == 1 ? (angle < 0 ? angle + 360 : angle) : abs(angle > 0 ? angle - 360 : angle);
+                angle = _Forward == 0 ? (angle < 0 ? angle + 360 : angle) : abs(angle > 0 ? angle - 360 : angle);
                 
                 //根据当前坐标角度和目标角度的大小关系渲染进度条
                 const float curAngle = _Progress * 360;
@@ -77,7 +77,7 @@ Shader "Unlit/Progress"
                     (1 - _ForegroundColor.a) :  _BackgroundColor.xyz;
 
                 //计算透明度和混色
-                const float quadFinalAlpha = _ForegroundColor.a > _BackgroundColor.a ? _ForegroundColor.a : _BackgroundColor.a;
+                const float quadFinalAlpha =  clamp(0,255,_BackgroundColor.a + _ForegroundColor.a) ;
                 const float semiFinalAlpha = curAngle >= angle ? quadFinalAlpha: _BackgroundColor.a;
                 final.a = step(1 - col.a, 0.5) == 1 ? semiFinalAlpha : 0;
                 
