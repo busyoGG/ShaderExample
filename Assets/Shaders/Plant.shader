@@ -11,6 +11,8 @@ Shader "Custom/Plant"
         _BendRate("BendRate",Range(0,2)) = 1.0
         _WindStrength("WindStrength",Range(0,45)) = 0.0
         _WindDirection("WindDirection",Range(0,360)) = 0.0
+        _Random("Random (RGB)",2D) = "black" {}
+        _RandomRate("RandomRate",Range(0,10)) = 1
     }
     SubShader
     {
@@ -37,12 +39,15 @@ Shader "Custom/Plant"
             float _Gloss;
 
             sampler2D _MainTex;
+            sampler2D _Random;
 
             float _SwingTime;
             float _SwingStrength;
             float _BendRate;
             float _WindStrength;
             float _WindDirection;
+            float _RandomRate;
+
 
             struct v2f
             {
@@ -56,13 +61,16 @@ Shader "Custom/Plant"
             v2f vert(appdata_base v)
             {
                 v2f o;
-
+                float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
+                float2 offsetPos = worldPos.xz;
+                float4 random = tex2Dlod(_Random, float4(offsetPos, 0, 0));
                 //时间 0-1秒循环
-                float time = (_Time.y / _SwingTime * (1 - _WindStrength * 0.5)) % 1;
+                float time = ((_Time.y + random * _RandomRate) / _SwingTime * (1 - _WindStrength * 0.5)) % 1;
                 //偏移量 根据时间在 sin(0) 到 sin(2π) 之间切换
                 float offset = sin(time * 360 * UNITY_PI / 180);
                 //计算旋转角度
-                float angle = _SwingStrength * offset + _WindStrength;
+                float radWind = _WindDirection * UNITY_PI / 180;
+                float angle = _SwingStrength * offset + _WindStrength * cos(radWind);
                 float bendRate = (v.vertex.y - v.vertex.y * _WindStrength * 0.02) * _BendRate;
                 float anglePlus = _SwingStrength == 0 ? 0 : (angle / _SwingStrength);
                 angle += _SwingStrength * 0.5 * bendRate * anglePlus;
@@ -79,22 +87,25 @@ Shader "Custom/Plant"
                 );
 
                 //计算风力旋转
-                float radWind = _WindDirection * UNITY_PI / 180;
-                const float4x4 rotY = float4x4(
-                    cos(radWind), 0, sin(radWind), 0,
-                    0, 1, 0, 0,
-                    -sin(radWind), 0, cos(radWind), 0,
+                float radBendWind = (_WindDirection % 180) * 0.2 * sin(radWind) * (v.vertex.y * _WindStrength * 0.02) *
+                    UNITY_PI / 180;
+                const float4x4 rotX = float4x4(
+                    1, 0, 0, 0,
+                    0, cos(radBendWind), -sin(radBendWind), 0,
+                    0, sin(radBendWind), cos(radBendWind), 0,
                     0, 0, 0, 1
                 );
+
+
                 //顶点转为裁剪空间坐标
                 float3 pos = mul(rotZ, v.vertex);
-                pos = mul(rotY, pos);
+                pos = mul(rotX, pos);
 
                 v.vertex.xyz = pos;
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.uv = v.texcoord;
-                o.worldPos = mul(unity_ObjectToWorld, v.vertex);
-                o.worldNormal = UnityObjectToWorldNormal(mul(rotY,mul(rotZ,v.normal)));
+                o.worldPos = worldPos;
+                o.worldNormal = UnityObjectToWorldNormal(mul(rotX, mul(rotZ, v.normal)));
 
                 TRANSFER_SHADOW(o);
                 return o;
@@ -145,31 +156,37 @@ Shader "Custom/Plant"
                 // float4 pos : SV_POSITION;
                 // float3 worldPos : TEXCOORD0;
             };
-            
+
             float _SwingTime;
             float _SwingStrength;
             float _BendRate;
             float _WindStrength;
             float _WindDirection;
-            
+            sampler2D _Random;
+            float _RandomRate;
+
 
             v2f vert(appdata_base v)
             {
                 v2f o;
+                //噪声随机摆动
+                float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
+                float2 offsetPos = worldPos.xz;
+                float4 random = tex2Dlod(_Random, float4(offsetPos, 0, 0));
                 //时间 0-1秒循环
-                float time = (_Time.y / _SwingTime * (1 - _WindStrength * 0.5)) % 1;
+                float time = ((_Time.y + random * _RandomRate) / _SwingTime * (1 - _WindStrength * 0.5)) % 1;
                 //偏移量 根据时间在 sin(0) 到 sin(2π) 之间切换
                 float offset = sin(time * 360 * UNITY_PI / 180);
                 //计算旋转角度
-                float angle = _SwingStrength * offset + _WindStrength;
+                float radWind = _WindDirection * UNITY_PI / 180;
+                float angle = _SwingStrength * offset + _WindStrength * cos(radWind);
                 float bendRate = (v.vertex.y - v.vertex.y * _WindStrength * 0.02) * _BendRate;
                 float anglePlus = _SwingStrength == 0 ? 0 : (angle / _SwingStrength);
                 angle += _SwingStrength * 0.5 * bendRate * anglePlus;
 
-                // angle = clamp(-90,90,angle);
                 //角度转弧度
                 const float rad = angle * UNITY_PI / 180;
-                //计算旋转矩阵
+                //计算沿z轴变换矩阵
                 const float4x4 rotZ = float4x4(
                     cos(rad), -sin(rad), 0, 0,
                     sin(rad), cos(rad), 0, 0,
@@ -177,22 +194,23 @@ Shader "Custom/Plant"
                     0, 0, 0, 1
                 );
 
-                //计算风力旋转
-                float radWind = _WindDirection * UNITY_PI / 180;
-                const float4x4 rotY = float4x4(
-                    cos(radWind), 0, sin(radWind), 0,
-                    0, 1, 0, 0,
-                    -sin(radWind), 0, cos(radWind), 0,
+                //计算沿x轴变换矩阵
+                float radBendWind = (_WindDirection % 180) * 0.2 * sin(radWind) * (v.vertex.y * _WindStrength * 0.02) *
+                    UNITY_PI / 180;
+                const float4x4 rotX = float4x4(
+                    1, 0, 0, 0,
+                    0, cos(radBendWind), -sin(radBendWind), 0,
+                    0, sin(radBendWind), cos(radBendWind), 0,
                     0, 0, 0, 1
                 );
+
+
                 //顶点转为裁剪空间坐标
                 float3 pos = mul(rotZ, v.vertex);
-                pos = mul(rotY, pos);
+                pos = mul(rotX, pos);
 
-                // o.pos = UnityObjectToClipPos(pos);
-                // o.worldPos = mul(unity_ObjectToWorld, pos.xyz);
                 v.vertex.xyz = pos;
-                
+
                 TRANSFER_SHADOW_CASTER(o);
                 return o;
             }

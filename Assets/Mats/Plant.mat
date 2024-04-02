@@ -59,6 +59,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _Random:
+        m_Texture: {fileID: 2800000, guid: b3cb86636aa88364a80d81329ea1eeb3, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _BendRate: 2
@@ -75,11 +79,12 @@ Material:
     - _OcclusionStrength: 1
     - _OutlineWidth: 0.1
     - _Parallax: 0.02
+    - _RandomRate: 4.78
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _SwingStrength: 2
-    - _SwingTime: 10
+    - _SwingStrength: 0.54
+    - _SwingTime: 3.13
     - _UVSec: 0
     - _WaveRatioY: 0.452
     - _WaveStrength: 2
