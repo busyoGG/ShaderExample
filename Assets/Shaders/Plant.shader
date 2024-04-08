@@ -13,6 +13,7 @@ Shader "Custom/Plant"
         _WindDirection("WindDirection",Range(0,360)) = 0.0
         _Random("Random (RGB)",2D) = "black" {}
         _RandomRate("RandomRate",Range(0,10)) = 1
+        _GlobalPos("GlobalPos",Vector) = (0,0,0)
     }
     SubShader
     {
@@ -48,6 +49,8 @@ Shader "Custom/Plant"
             float _WindDirection;
             float _RandomRate;
 
+            float3 _GlobalPos;
+
 
             struct v2f
             {
@@ -62,16 +65,36 @@ Shader "Custom/Plant"
             {
                 v2f o;
                 float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
+
                 float2 offsetPos = worldPos.xz;
                 float4 random = tex2Dlod(_Random, float4(offsetPos, 0, 0));
                 //时间 0-1秒循环
                 float time = ((_Time.y + random * _RandomRate) / _SwingTime * (1 - _WindStrength * 0.5)) % 1;
                 //偏移量 根据时间在 sin(0) 到 sin(2π) 之间切换
                 float offset = sin(time * 360 * UNITY_PI / 180);
+                // //判断方向
+                // float direct = offset > 0 ? -1 : 1;
+
+                //计算交互方向
+                float2 interactiveVec = worldPos.xz - _GlobalPos.xz;
+                float3 worldAxis = UnityObjectToWorldNormal(float3(1,0,0));
+                float direct = dot(interactiveVec,worldAxis) >= 0 ? -1 : 1;
+                
+                //计算顶点与交互物体坐标的距离
+                float dist = length(interactiveVec);
+                //计算交互距离比率
+                float distRatio = clamp(0,1,dist / 1);
+                
                 //计算旋转角度
                 float radWind = _WindDirection * UNITY_PI / 180;
                 float angle = _SwingStrength * offset + _WindStrength * cos(radWind);
                 float bendRate = (v.vertex.y - v.vertex.y * _WindStrength * 0.02) * _BendRate;
+                
+                //计算交互弯曲角度
+                float interactiveAngle = 90 * (1 - distRatio) * (1 - normalize(v.vertex).y) * direct;
+                //获得弯曲角度和交互弯曲角度中较大的一方
+                angle = angle + interactiveAngle;
+                
                 float anglePlus = _SwingStrength == 0 ? 0 : (angle / _SwingStrength);
                 angle += _SwingStrength * 0.5 * bendRate * anglePlus;
 
