@@ -6,11 +6,12 @@ Shader "Custom/Plant"
         _Specular ("Specular", Color) = (1, 1, 1, 1)
         _Gloss ("Gloss", Range(8.0, 256)) = 20
         _MainTex ("Albedo (RGB)", 2D) = "white" {}
+        _Bottom("Bottom",Range(-1,0)) = 0.0
         _WindStrength("WindStrength",Range(0,45)) = 0.0
+        _WindDirection("WindDirection",Range(0,360)) = 0.0
         _Random("Random (RGB)",2D) = "black" {}
         _RandomScale("RandomScale",Range(0,100)) = 1.0
         _GlobalPos("GlobalPos",Vector) = (0,0,0)
-        _Bottom("Bottom",Range(-1,0)) = 0.0
     }
     SubShader
     {
@@ -40,6 +41,7 @@ Shader "Custom/Plant"
             sampler2D _Random;
             
             float _WindStrength;
+            float _WindDirection;
             float _RandomScale;
 
             float3 _GlobalPos;
@@ -62,6 +64,17 @@ Shader "Custom/Plant"
                 float2 offsetPos = (worldPos.xz * 1 / _RandomScale) * _Time.x;
                 //采样
                 float4 random = tex2Dlod(_Random, float4(offsetPos, 0, 0));
+
+                float rad = _WindDirection * UNITY_PI / 180;
+                //风向
+                float4x4 rot = float4x4(
+                    cos(rad),0,sin(rad),0,
+                    0,1,0,0,
+                    -sin(rad),0,cos(rad),0,
+                    0,0,0,1
+                    );
+
+                random = mul(rot,random);
 
                 float bottom = v.vertex.y - _Bottom;
 
@@ -147,6 +160,7 @@ Shader "Custom/Plant"
             sampler2D _Random;
             
             float _WindStrength;
+            float _WindDirection;
             float _RandomScale;
 
             float3 _GlobalPos;
@@ -160,6 +174,17 @@ Shader "Custom/Plant"
                 float2 offsetPos = (worldPos.xz * 1 / _RandomScale) * _Time.x;
                 //采样
                 float4 random = tex2Dlod(_Random, float4(offsetPos, 0, 0));
+
+                float rad = _WindDirection * UNITY_PI / 180;
+                //风向
+                float4x4 rot = float4x4(
+                    cos(rad),0,sin(rad),0,
+                    0,1,0,0,
+                    -sin(rad),0,cos(rad),0,
+                    0,0,0,1
+                    );
+
+                random = mul(rot,random);
 
                 float bottom = v.vertex.y - _Bottom;
 
