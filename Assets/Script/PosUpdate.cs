@@ -7,7 +7,7 @@ public class PosUpdate : MonoBehaviour
 
     private void Awake()
     {
-        _grass = GameObject.Find("single_grass").GetComponent<Renderer>().sharedMaterial;
+        _grass = GameObject.Find("uploads_files_3639591_Grass").transform.GetChild(0).GetComponent<Renderer>().sharedMaterial;
     }
 
     private void Update()

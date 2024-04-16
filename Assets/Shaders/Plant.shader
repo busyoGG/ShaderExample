@@ -6,14 +6,11 @@ Shader "Custom/Plant"
         _Specular ("Specular", Color) = (1, 1, 1, 1)
         _Gloss ("Gloss", Range(8.0, 256)) = 20
         _MainTex ("Albedo (RGB)", 2D) = "white" {}
-        _SwingStrength("SwingStrength",Range(0,10)) = 2.0
-        _SwingTime("SwingTime",Range(0.01,10)) = 5.0
-        _BendRate("BendRate",Range(0,2)) = 1.0
         _WindStrength("WindStrength",Range(0,45)) = 0.0
-        _WindDirection("WindDirection",Range(0,360)) = 0.0
         _Random("Random (RGB)",2D) = "black" {}
-        _RandomRate("RandomRate",Range(0,10)) = 1
+        _RandomScale("RandomScale",Range(0,100)) = 1.0
         _GlobalPos("GlobalPos",Vector) = (0,0,0)
+        _Bottom("Bottom",Range(-1,0)) = 0.0
     }
     SubShader
     {
@@ -41,16 +38,12 @@ Shader "Custom/Plant"
 
             sampler2D _MainTex;
             sampler2D _Random;
-
-            float _SwingTime;
-            float _SwingStrength;
-            float _BendRate;
+            
             float _WindStrength;
-            float _WindDirection;
-            float _RandomRate;
+            float _RandomScale;
 
             float3 _GlobalPos;
-
+            float _Bottom;
 
             struct v2f
             {
@@ -66,69 +59,40 @@ Shader "Custom/Plant"
                 v2f o;
                 float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
 
-                float2 offsetPos = worldPos.xz;
+                float2 offsetPos = (worldPos.xz * 1 / _RandomScale) * _Time.x;
+                //采样
                 float4 random = tex2Dlod(_Random, float4(offsetPos, 0, 0));
-                //时间 0-1秒循环
-                float time = ((_Time.y + random * _RandomRate) / _SwingTime * (1 - _WindStrength * 0.5)) % 1;
-                //偏移量 根据时间在 sin(0) 到 sin(2π) 之间切换
-                float offset = sin(time * 360 * UNITY_PI / 180);
-                // //判断方向
-                // float direct = offset > 0 ? -1 : 1;
 
+                float bottom = v.vertex.y - _Bottom;
+
+                float bendRate = bottom;
+
+                float2 offset = random.xz * bendRate * _WindStrength;
+
+                v.vertex.xz += offset * 0.1;
+
+                v.vertex.y -= random.y * bendRate * 0.1 * _WindStrength;
+
+                float3 newWoldPos = mul(unity_ObjectToWorld, v.vertex);
                 //计算交互方向
-                float2 interactiveVec = worldPos.xz - _GlobalPos.xz;
-                float3 worldAxis = UnityObjectToWorldNormal(float3(1,0,0));
-                float direct = dot(interactiveVec,worldAxis) >= 0 ? -1 : 1;
+                float2 interactiveVec = newWoldPos.xz - _GlobalPos.xz;
                 
                 //计算顶点与交互物体坐标的距离
                 float dist = length(interactiveVec);
                 //计算交互距离比率
-                float distRatio = clamp(0,1,dist / 1);
+                float distRatio = clamp(0, 1, dist / 1);
+
+                float2 interactiveOffset = normalize(interactiveVec.xy);
+                float2 interactiveOffsetFinal = clamp(0,0.4,interactiveOffset * (1 - distRatio) * bendRate);
                 
-                //计算旋转角度
-                float radWind = _WindDirection * UNITY_PI / 180;
-                float angle = _SwingStrength * offset + _WindStrength * cos(radWind);
-                float bendRate = (v.vertex.y - v.vertex.y * _WindStrength * 0.02) * _BendRate;
-                
-                //计算交互弯曲角度
-                float interactiveAngle = 90 * (1 - distRatio) * (1 - normalize(v.vertex).y) * direct;
-                //获得弯曲角度和交互弯曲角度中较大的一方
-                angle = angle + interactiveAngle;
-                
-                float anglePlus = _SwingStrength == 0 ? 0 : (angle / _SwingStrength);
-                angle += _SwingStrength * 0.5 * bendRate * anglePlus;
-
-                // angle = clamp(-90,90,angle);
-                //角度转弧度
-                const float rad = angle * UNITY_PI / 180;
-                //计算旋转矩阵
-                const float4x4 rotZ = float4x4(
-                    cos(rad), -sin(rad), 0, 0,
-                    sin(rad), cos(rad), 0, 0,
-                    0, 0, 1, 0,
-                    0, 0, 0, 1
-                );
-
-                //计算风力旋转
-                float radBendWind = (_WindDirection % 180) * 0.2 * sin(radWind) * (v.vertex.y * _WindStrength * 0.02) *
-                    UNITY_PI / 180;
-                const float4x4 rotX = float4x4(
-                    1, 0, 0, 0,
-                    0, cos(radBendWind), -sin(radBendWind), 0,
-                    0, sin(radBendWind), cos(radBendWind), 0,
-                    0, 0, 0, 1
-                );
-
-
-                //顶点转为裁剪空间坐标
-                float3 pos = mul(rotZ, v.vertex);
-                pos = mul(rotX, pos);
-
-                v.vertex.xyz = pos;
+                v.vertex.xz += interactiveOffsetFinal;
+                v.vertex.y -= bottom * (1 - distRatio);
+                    
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.uv = v.texcoord;
                 o.worldPos = worldPos;
-                o.worldNormal = UnityObjectToWorldNormal(mul(rotX, mul(rotZ, v.normal)));
+                o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                // o.worldNormal = UnityObjectToWorldNormal(mul(rotX, mul(rotZ, v.normal)));
 
                 TRANSFER_SHADOW(o);
                 return o;
@@ -180,60 +144,48 @@ Shader "Custom/Plant"
                 // float3 worldPos : TEXCOORD0;
             };
 
-            float _SwingTime;
-            float _SwingStrength;
-            float _BendRate;
-            float _WindStrength;
-            float _WindDirection;
             sampler2D _Random;
-            float _RandomRate;
+            
+            float _WindStrength;
+            float _RandomScale;
 
+            float3 _GlobalPos;
+            float _Bottom;
 
             v2f vert(appdata_base v)
             {
                 v2f o;
-                //噪声随机摆动
                 float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
-                float2 offsetPos = worldPos.xz;
+
+                float2 offsetPos = (worldPos.xz * 1 / _RandomScale) * _Time.x;
+                //采样
                 float4 random = tex2Dlod(_Random, float4(offsetPos, 0, 0));
-                //时间 0-1秒循环
-                float time = ((_Time.y + random * _RandomRate) / _SwingTime * (1 - _WindStrength * 0.5)) % 1;
-                //偏移量 根据时间在 sin(0) 到 sin(2π) 之间切换
-                float offset = sin(time * 360 * UNITY_PI / 180);
-                //计算旋转角度
-                float radWind = _WindDirection * UNITY_PI / 180;
-                float angle = _SwingStrength * offset + _WindStrength * cos(radWind);
-                float bendRate = (v.vertex.y - v.vertex.y * _WindStrength * 0.02) * _BendRate;
-                float anglePlus = _SwingStrength == 0 ? 0 : (angle / _SwingStrength);
-                angle += _SwingStrength * 0.5 * bendRate * anglePlus;
 
-                //角度转弧度
-                const float rad = angle * UNITY_PI / 180;
-                //计算沿z轴变换矩阵
-                const float4x4 rotZ = float4x4(
-                    cos(rad), -sin(rad), 0, 0,
-                    sin(rad), cos(rad), 0, 0,
-                    0, 0, 1, 0,
-                    0, 0, 0, 1
-                );
+                float bottom = v.vertex.y - _Bottom;
 
-                //计算沿x轴变换矩阵
-                float radBendWind = (_WindDirection % 180) * 0.2 * sin(radWind) * (v.vertex.y * _WindStrength * 0.02) *
-                    UNITY_PI / 180;
-                const float4x4 rotX = float4x4(
-                    1, 0, 0, 0,
-                    0, cos(radBendWind), -sin(radBendWind), 0,
-                    0, sin(radBendWind), cos(radBendWind), 0,
-                    0, 0, 0, 1
-                );
+                float bendRate = bottom;
 
+                float2 offset = random.xz * bendRate * _WindStrength;
 
-                //顶点转为裁剪空间坐标
-                float3 pos = mul(rotZ, v.vertex);
-                pos = mul(rotX, pos);
+                v.vertex.xz += offset * 0.1;
 
-                v.vertex.xyz = pos;
+                v.vertex.y -= random.y * bendRate * 0.1 * _WindStrength;
 
+                float3 newWoldPos = mul(unity_ObjectToWorld, v.vertex);
+                //计算交互方向
+                float2 interactiveVec = newWoldPos.xz - _GlobalPos.xz;
+                
+                //计算顶点与交互物体坐标的距离
+                float dist = length(interactiveVec);
+                //计算交互距离比率
+                float distRatio = clamp(0, 1, dist / 1);
+
+                float2 interactiveOffset = normalize(interactiveVec.xy);
+                float2 interactiveOffsetFinal = clamp(0,0.4,interactiveOffset * (1 - distRatio) * bendRate);
+                
+                v.vertex.xz += interactiveOffsetFinal;
+                v.vertex.y -= bottom * (1 - distRatio);
+                    
                 TRANSFER_SHADOW_CASTER(o);
                 return o;
             }
