@@ -60,12 +60,13 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Random:
-        m_Texture: {fileID: 2800000, guid: b3cb86636aa88364a80d81329ea1eeb3, type: 3}
+        m_Texture: {fileID: 2800000, guid: a9bbc115a9f944f488c402299296deda, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BendRate: 2
+    - _BendRate: 0.95
+    - _Bottom: -0.587
     - _BumpScale: 1
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
@@ -80,23 +81,24 @@ Material:
     - _OutlineWidth: 0.1
     - _Parallax: 0.02
     - _RandomRate: 4.78
+    - _RandomScale: 2.2
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _SwingStrength: 0.54
+    - _SwingStrength: 2.3
     - _SwingTime: 3.13
     - _UVSec: 0
     - _WaveRatioY: 0.452
     - _WaveStrength: 2
     - _WaveTime: 5
     - _WindDirection: 0
-    - _WindStrength: 0
+    - _WindStrength: 7.3
     - _ZWrite: 1
     m_Colors:
     - _Color: {r: 0.5990566, g: 1, b: 0.63392127, a: 1}
     - _Diffuse: {r: 0.0047169924, g: 1, b: 0.008970961, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _GlobalPos: {r: 0.03, g: 0, b: -0.84, a: 0}
+    - _GlobalPos: {r: -1.31, g: 0, b: -1.48, a: 0}
     - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
     - _Specular: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
